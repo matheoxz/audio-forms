@@ -1,9 +1,7 @@
 services:
-  postgres:
-    image: 'postgres:latest'
+  mongodb:
+    image: 'mongo:latest'
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      - 'MONGO_INITDB_DATABASE=audio-forms'
     ports:
-      - '5432'
+      - '27017:27017'
