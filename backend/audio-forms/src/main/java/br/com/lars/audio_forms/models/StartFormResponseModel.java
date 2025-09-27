@@ -1,4 +1,7 @@
 package br.com.lars.audio_forms.models;
 
-public class StartFormResponseModel {
+import java.util.List;
+
+public record StartFormResponseModel(List<String> audios) {
+
 }

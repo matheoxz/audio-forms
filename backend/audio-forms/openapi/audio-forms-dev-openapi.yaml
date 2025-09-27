@@ -1,0 +1,121 @@
+openapi: 3.0.1
+info:
+  title: Audio Forms API
+  version: "1.0.0"
+  description: "API para listar e recuperar áudios e salvar respostas (importável no Insomnia)"
+servers:
+  - url: http://localhost:8080
+paths:
+  /start:
+    get:
+      summary: "Lista até 5 nomes de áudio aleatórios"
+      responses:
+        '200':
+          description: "Lista de nomes de arquivos de áudio"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audios:
+                    type: array
+                    items:
+                      type: string
+                example:
+                  audios:
+                    - audio1.wav
+                    - audio2.wav
+                    - audio3.wav
+  /audios/{audioName}:
+    get:
+      summary: "Retorna os conteúdos original e poisoned (base64) para um áudio"
+      parameters:
+        - name: audioName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Nome do arquivo de áudio (ex.: example.wav)"
+      responses:
+        '200':
+          description: "Conteúdos de áudio (base64)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  original:
+                    type: string
+                    format: byte
+                    description: "Arquivo original codificado em base64"
+                  poisoned:
+                    type: string
+                    format: byte
+                    description: "Arquivo poisoned codificado em base64"
+                example:
+                  original: "UklGRrQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="
+                  poisoned: "UklGRrQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="
+        '404':
+          description: "Arquivo não encontrado"
+  /response:
+    post:
+      summary: "Salva resposta do formulário no MongoDB"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveFormRequestModel'
+            example:
+              audioName: example.wav
+              original: "orig-identifier-or-base64"
+              poisoned: "poisoned-identifier-or-base64"
+              responses:
+                q1: "resposta1"
+                q2: "resposta2"
+      responses:
+        '201':
+          description: "Documento salvo (retorna FormResponse com id)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormResponse'
+        '400':
+          description: "Requisição inválida"
+components:
+  schemas:
+    SaveFormRequestModel:
+      type: object
+      required:
+        - audioName
+      properties:
+        audioName:
+          type: string
+          description: "Nome do arquivo de áudio associado"
+        original:
+          type: string
+          description: "Identificador ou conteúdo original (string/base64)"
+        poisoned:
+          type: string
+          description: "Identificador ou conteúdo poisoned (string/base64)"
+        responses:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Mapa de respostas de formulário"
+    FormResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "ID gerado pelo MongoDB"
+        audioName:
+          type: string
+        original:
+          type: string
+        poisoned:
+          type: string
+        responses:
+          type: object
+          additionalProperties:
+            type: string
