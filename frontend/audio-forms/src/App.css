@@ -1,3 +1,38 @@
+:root {
+  /* light theme defaults */
+  --bg: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --card: #f8fafc;
+  --button-bg: #1f6feb;
+  --button-color: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --error: #dc2626;
+}
+
+/* Dark theme overrides when .dark is applied on the root */
+.dark {
+  /* make the dark theme full black */
+  --bg: #000000;
+  --text: #ffffff;
+  --muted: #aaaaaa;
+  --card: #000000; /* full black card */
+  --button-bg: #222222;
+  --button-color: #ffffff;
+  --input-bg: #000000; /* inputs also full black */
+  --input-border: #222222;
+  --error: #ff6b6b;
+}
+
+/* Apply theme variables to the app root */
+.app-root {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* keep existing App styles but remove hardcoded dark header color usage */
 .App {
   text-align: center;
 }
@@ -14,19 +49,117 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  /* make header use variables */
+  background-color: var(--card);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  color: white;
+  color: var(--text);
 }
 
 .App-link {
   color: #61dafb;
 }
+
+/* Basic form element styles using variables */
+textarea {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  padding: 8px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+button {
+  background: var(--button-bg);
+  color: var(--button-color);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input[type="radio"] {
+  accent-color: var(--button-bg);
+}
+
+p.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+/* Slider styling: make the track and thumb white (uses CSS variables so it adapts to theme) */
+.slider-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+}
+
+/* WebKit track */
+.slider-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--button-color);
+  border-radius: 6px;
+  opacity: 0.25;
+}
+
+/* WebKit thumb */
+.slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--button-color);
+  border: 2px solid var(--button-bg);
+  margin-top: -5px; /* vertically center the thumb */
+  cursor: pointer;
+}
+
+/* Firefox track and thumb */
+.slider-range::-moz-range-track {
+  height: 6px;
+  background: var(--button-color);
+  border-radius: 6px;
+  opacity: 0.25;
+}
+.slider-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--button-color);
+  border: 2px solid var(--button-bg);
+  cursor: pointer;
+}
+
+.slider-range:focus {
+  outline: none;
+}
+
+/* Slider label: allow wrapping for long labels and keep centered text */
+.slider-label {
+  max-width: 120px; /* tweak as needed for layout */
+  font-size: 0.95rem;
+  white-space: normal; /* allow wrapping */
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+/* Ensure selected tick buttons (rendered when show_scale=true) are high-contrast in dark theme
+   (the inline styles in the component already use var(--button-color) and var(--button-bg)). */
 
 @keyframes App-logo-spin {
   from {
@@ -35,4 +168,44 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Modal intro styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: var(--card);
+  color: var(--text);
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 720px;
+  width: calc(100% - 48px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+}
+
+.modal-content p {
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+/* Ensure the modal's button uses variables */
+.modal-content button {
+  background: var(--button-bg);
+  color: var(--button-color);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
 }

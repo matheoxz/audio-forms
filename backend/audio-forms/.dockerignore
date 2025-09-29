@@ -1,0 +1,13 @@
+target/
+# Do NOT ignore the .mvn directory — the Dockerfile copies it to run the Maven wrapper inside the image
+
+**/node_modules
+**/.git
+**/.gitignore
+**/logs
+**/*.log
+Dockerfile
+README.md
+*.iml
+.idea/
+.vscode/

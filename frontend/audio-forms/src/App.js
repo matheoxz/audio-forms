@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import TextQuestion from './components/TextQuestion';
 
-// You can set REACT_APP_API_BASE to override the proxy/base URL in production
+// API base URL comes from the environment variable REACT_APP_API_BASE
 const API_BASE = process.env.REACT_APP_API_BASE || '';
 
-const Q1 = 'O que dizem os audios?';
-const Q2 = 'Há diferença notável na qualidade de um dos audios?';
-const Q3 = 'Qual audio tem a pior qualidade'; // note: no question mark per spec
+const Q1 = 'O que é dito em cada um dos áudios?';
 
 function App() {
   const [audiosList, setAudiosList] = useState([]); // ["audio1.wav", ...]
@@ -15,17 +14,57 @@ function App() {
 
   const [index, setIndex] = useState(0);
 
-  const [audioData, setAudioData] = useState(null); // { original: base64, poisoned: base64 }
+  // audioData now holds original, poisoned100 and poisoned300
+  const [audioData, setAudioData] = useState(null); // { original: base64, poisoned100: base64, poisoned300: base64 }
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState('');
 
-  const [textAnswer, setTextAnswer] = useState('');
-  const [diffAnswer, setDiffAnswer] = useState(''); // 'Sim' | 'Não'
-  const [worstAnswer, setWorstAnswer] = useState(''); // 'Audio 1' | 'Audio 2' | 'Nenhum'
+  // textAnswer holds an object mapping for the three audios
+  const [textAnswer, setTextAnswer] = useState({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [userId, setUserId] = useState('');
+  // Theme: follow system preference (prefers-color-scheme), fallback to light
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
+  // Show intro popup the first time the user accesses the form
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return true;
+      return !window.localStorage.getItem('seen_intro');
+    } catch (e) {
+      return true;
+    }
+  });
+
+  function closeIntro() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('seen_intro', '1');
+      }
+    } catch (e) {
+      // ignore
+    }
+    setShowIntro(false);
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e) => setTheme(e.matches ? 'dark' : 'light');
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    else mq.addListener(handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', handler);
+      else mq.removeListener(handler);
+    };
+  }, []);
 
   const isDone = index >= audiosList.length && audiosList.length > 0;
 
@@ -69,13 +108,15 @@ function App() {
       setAudioError('');
       setAudioData(null);
       try {
-        const res = await fetch(`${API_BASE}/audios/${encodeURIComponent(currentAudioName)}`);
+        let audiopath = currentAudioName.split('/');
+        const res = await fetch(`${API_BASE}/audios/${audiopath[0]}/${encodeURIComponent(audiopath[1])}`);
         if (!res.ok) throw new Error(`Erro ao buscar áudios: ${res.status}`);
         const data = await res.json();
-        if (!data?.original || !data?.poisoned) {
+        // expect original, poisoned100 and poisoned300
+        if (!data?.original || !data?.poisoned100 || !data?.poisoned300) {
           throw new Error('Resposta inválida do servidor para os áudios');
         }
-        setAudioData({ original: data.original, poisoned: data.poisoned });
+        setAudioData({ original: data.original, poisoned100: data.poisoned100, poisoned300: data.poisoned300 });
       } catch (e) {
         setAudioError(e.message || 'Erro ao carregar áudios');
       } finally {
@@ -83,53 +124,77 @@ function App() {
       }
     }
     fetchAudio();
-    // reset answers at each new screen
-    setTextAnswer('');
-    setDiffAnswer('');
-    setWorstAnswer('');
+    // reset answers at each new screen (only Q1)
+    setTextAnswer({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
     setSubmitError('');
   }, [currentAudioName]);
 
-  // Randomly map which data is "Audio 1" vs "Audio 2" whenever audioData changes
+  // Randomly map which data is "Audio 1" vs "Audio 2" vs "Audio 3" whenever audioData changes
   const mapping = useMemo(() => {
     if (!audioData) return null;
-    const originalIsOne = Math.random() < 0.5;
+    // create an array of source keys and shuffle
+    const keys = ['original', 'poisoned100', 'poisoned300'];
+    for (let i = keys.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [keys[i], keys[j]] = [keys[j], keys[i]];
+    }
+    // keys[0] -> Audio 1, keys[1] -> Audio 2, keys[2] -> Audio 3
     return {
-      originalLabel: originalIsOne ? 'Audio 1' : 'Audio 2',
-      poisonedLabel: originalIsOne ? 'Audio 2' : 'Audio 1',
+      audio1Key: keys[0],
+      audio2Key: keys[1],
+      audio3Key: keys[2],
+      // also expose which label corresponds to which source
+      originalLabel: keys.indexOf('original') === 0 ? 'Audio 1' : (keys.indexOf('original') === 1 ? 'Audio 2' : 'Audio 3'),
+      poisoned100Label: keys.indexOf('poisoned100') === 0 ? 'Audio 1' : (keys.indexOf('poisoned100') === 1 ? 'Audio 2' : 'Audio 3'),
+      poisoned300Label: keys.indexOf('poisoned300') === 0 ? 'Audio 1' : (keys.indexOf('poisoned300') === 1 ? 'Audio 2' : 'Audio 3'),
     };
   }, [audioData]);
 
   const audio1Src = useMemo(() => {
     if (!audioData || !mapping) return '';
-    const srcBase64 = mapping.originalLabel === 'Audio 1' ? audioData.original : audioData.poisoned;
+    const key = mapping.audio1Key;
+    const srcBase64 = audioData[key];
     return `data:audio/wav;base64,${srcBase64}`;
   }, [audioData, mapping]);
 
   const audio2Src = useMemo(() => {
     if (!audioData || !mapping) return '';
-    const srcBase64 = mapping.originalLabel === 'Audio 2' ? audioData.original : audioData.poisoned;
+    const key = mapping.audio2Key;
+    const srcBase64 = audioData[key];
     return `data:audio/wav;base64,${srcBase64}`;
   }, [audioData, mapping]);
 
-  const canSubmit = !!(
-    audioData && mapping && textAnswer.trim() && diffAnswer && worstAnswer
-  );
+  const audio3Src = useMemo(() => {
+    if (!audioData || !mapping) return '';
+    const key = mapping.audio3Key;
+    const srcBase64 = audioData[key];
+    return `data:audio/wav;base64,${srcBase64}`;
+  }, [audioData, mapping]);
+
+  function isTextAnswerComplete(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    return ['Audio 1', 'Audio 2', 'Audio 3'].every((k) => {
+      const v = obj[k];
+      return typeof v === 'string' && v.trim().length > 0;
+    });
+  }
+
+  const canSubmitAll = !!(audioData && mapping && isTextAnswerComplete(textAnswer));
 
   async function handleSubmit() {
-    if (!canSubmit || !mapping) return;
+    if (!canSubmitAll || !mapping) return;
     setSubmitting(true);
     setSubmitError('');
     try {
       const payload = {
         user: userId,
         audioName: currentAudioName,
+        // mapping fields
         original: mapping.originalLabel,
-        poisoned: mapping.poisonedLabel,
+        poisoned100: mapping.poisoned100Label,
+        poisoned300: mapping.poisoned300Label,
         responses: {
-          [Q1]: textAnswer.trim(),
-          [Q2]: diffAnswer, // 'Sim' | 'Não'
-          [Q3]: worstAnswer, // 'Audio 1' | 'Audio 2' | 'Nenhum'
+          [Q1]: textAnswer,
         },
       };
 
@@ -154,12 +219,31 @@ function App() {
 
   // UI
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: 16, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
+    <div className={`app-root ${theme === 'dark' ? 'dark' : ''}`} style={{ maxWidth: 800, margin: '0 auto', padding: 16, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif' }}>
+
+      {/* Intro modal shown only the first time */}
+      {showIntro && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-content">
+            <h2>Aviso sobre o estudo</h2>
+            <p>
+              Este estudo tem como objetivo desenvolver um ataque passivo contra modelos generativos de fala. Elaboramos este questionário para coletarmos dados qualitativos a respeito da eficácia do ataque.
+            </p>
+            <p>
+              Para responder este questionário, é necessário que você consiga entender áudios em inglês, uma vez que o estudo utiliza uma base de dados em língua inglesa.
+            </p>
+            <div style={{ textAlign: 'right', marginTop: 12 }}>
+              <button onClick={closeIntro}>Entendi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1>Pesquisa de Áudio</h1>
 
       {startLoading && <p>Carregando lista de áudios...</p>}
       {startError && (
-        <div style={{ color: 'red' }}>
+        <div className="error">
           <p>Erro: {startError}</p>
           <button onClick={() => window.location.reload()}>Tentar novamente</button>
         </div>
@@ -171,100 +255,41 @@ function App() {
 
       {!isDone && !startLoading && !startError && currentAudioName && (
         <div>
-          <p style={{ color: '#555' }}>
+          <p className="muted">
             Formulário {index + 1} de {audiosList.length}
           </p>
 
           {audioLoading && <p>Carregando áudios...</p>}
-          {audioError && <p style={{ color: 'red' }}>Erro ao carregar áudios: {audioError}</p>}
+          {audioError && <p className="error">Erro ao carregar áudios: {audioError}</p>}
 
           {audioData && mapping && (
             <div>
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
-                <div style={{ flex: '1 1 300px' }}>
+                <div style={{ flex: '1 1 220px' }}>
                   <h3>Audio 1</h3>
                   <audio controls src={audio1Src} style={{ width: '100%' }} />
                 </div>
-                <div style={{ flex: '1 1 300px' }}>
+                <div style={{ flex: '1 1 220px' }}>
                   <h3>Audio 2</h3>
                   <audio controls src={audio2Src} style={{ width: '100%' }} />
                 </div>
+                <div style={{ flex: '1 1 220px' }}>
+                  <h3>Audio 3</h3>
+                  <audio controls src={audio3Src} style={{ width: '100%' }} />
+                </div>
               </div>
 
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor="q1" style={{ fontWeight: 600 }}>{Q1}</label>
-                <br />
-                <textarea
-                  id="q1"
-                  rows={4}
-                  style={{ width: '100%', marginTop: 8 }}
-                  value={textAnswer}
-                  onChange={(e) => setTextAnswer(e.target.value)}
-                  placeholder="Escreva aqui sua resposta"
-                />
-              </div>
+              <TextQuestion
+                question={Q1}
+                value={textAnswer}
+                onChange={(v) => setTextAnswer(v)}
+                placeholder="Escreva o que é dito em cada áudio"
+              />
 
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>{Q2}</div>
-                <label style={{ marginRight: 16 }}>
-                  <input
-                    type="radio"
-                    name="q2"
-                    value="Sim"
-                    checked={diffAnswer === 'Sim'}
-                    onChange={(e) => setDiffAnswer(e.target.value)}
-                  />{' '}
-                  Sim
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="q2"
-                    value="Não"
-                    checked={diffAnswer === 'Não'}
-                    onChange={(e) => setDiffAnswer(e.target.value)}
-                  />{' '}
-                  Não
-                </label>
-              </div>
 
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>{Q3}</div>
-                <label style={{ marginRight: 16 }}>
-                  <input
-                    type="radio"
-                    name="q3"
-                    value="Audio 1"
-                    checked={worstAnswer === 'Audio 1'}
-                    onChange={(e) => setWorstAnswer(e.target.value)}
-                  />{' '}
-                  Audio 1
-                </label>
-                <label style={{ marginRight: 16 }}>
-                  <input
-                    type="radio"
-                    name="q3"
-                    value="Audio 2"
-                    checked={worstAnswer === 'Audio 2'}
-                    onChange={(e) => setWorstAnswer(e.target.value)}
-                  />{' '}
-                  Audio 2
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="q3"
-                    value="Nenhum"
-                    checked={worstAnswer === 'Nenhum'}
-                    onChange={(e) => setWorstAnswer(e.target.value)}
-                  />{' '}
-                  Nenhum
-                </label>
-              </div>
+              {submitError && <p className="error">{submitError}</p>}
 
-              {submitError && <p style={{ color: 'red' }}>{submitError}</p>}
-
-              <button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+              <button onClick={handleSubmit} disabled={!canSubmitAll || submitting}>
                 {submitting ? 'Enviando...' : 'Enviar e próximo'}
               </button>
             </div>
