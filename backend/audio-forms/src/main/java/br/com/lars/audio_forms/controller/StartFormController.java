@@ -30,8 +30,10 @@ public class StartFormController {
     }
 
     // GET /audios/{audio_name} -> returns JSON with base64-encoded audio bytes
-    @GetMapping(path = "/audios/{audioName}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public AudiosResponseModel getAudios(@PathVariable("audioName") String audioName) throws IOException {
-        return startFormService.getAudios(audioName);
+    @GetMapping(path = "/audios/{subfolder}/{audioName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public AudiosResponseModel getAudios(
+            @PathVariable("subfolder") String subfolder,
+            @PathVariable("audioName") String audioName) throws IOException {
+        return startFormService.getAudios(subfolder, audioName);
     }
 }

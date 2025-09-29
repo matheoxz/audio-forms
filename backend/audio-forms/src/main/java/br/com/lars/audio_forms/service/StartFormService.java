@@ -20,44 +20,65 @@ public class StartFormService {
     private static final Path POISONED_DIR = Paths.get("audio", "poisoned");
 
     public List<String> selectAudios() throws IOException {
-        if (!Files.exists(ORIGINAL_DIR) || !Files.isDirectory(ORIGINAL_DIR)) {
+        Path audioRoot = Paths.get("audio");
+        if (!Files.exists(audioRoot) || !Files.isDirectory(audioRoot)) {
             return Collections.emptyList();
         }
 
-        List<String> all;
-        try (Stream<Path> stream = Files.list(ORIGINAL_DIR)) {
-            all = stream
-                    .filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
+        List<String> result = new ArrayList<>();
+
+        try (Stream<Path> subfolders = Files.list(audioRoot)) {
+            List<Path> folders = subfolders
+                    .filter(Files::isDirectory)
                     .collect(Collectors.toList());
+
+            for (Path folder : folders) {
+                Path originalDir = folder.resolve("original");
+                if (!Files.exists(originalDir) || !Files.isDirectory(originalDir)) {
+                    continue;
+                }
+                try (Stream<Path> files = Files.list(originalDir)) {
+                    List<Path> audioFiles = files
+                            .filter(Files::isRegularFile)
+                            .collect(Collectors.toList());
+                    if (!audioFiles.isEmpty()) {
+                        Collections.shuffle(audioFiles);
+                        Path selected = audioFiles.get(0);
+                        String subfolderName = folder.getFileName().toString();
+                        String fileName = selected.getFileName().toString();
+                        result.add(subfolderName + "/" + fileName);
+                    }
+                }
+            }
         }
 
-        Collections.shuffle(all);
-
-        if (all.size() <= 5) {
-            return new ArrayList<>(all);
-        }
-
-        return new ArrayList<>(all.subList(0, 5));
+        return result;
     }
 
-    public AudiosResponseModel getAudios(String audioName) throws IOException {
-        // sanitize filename to avoid path traversal
-        String fileName = Paths.get(audioName).getFileName().toString();
+    public AudiosResponseModel getAudios(String subfolder, String audioName) throws IOException {
+        Path originalPath = Paths.get("audio", subfolder, "original", audioName);
 
-        Path originalPath = ORIGINAL_DIR.resolve(fileName);
-        Path poisonedPath = POISONED_DIR.resolve(fileName);
+        //removes extension from audioName if exists
+        if (audioName.contains(".")) {
+            audioName = audioName.substring(0, audioName.lastIndexOf('.'));
+        }
+        Path poisoned100Path = Paths.get("audio", subfolder, "poisoned_100", audioName + "_100.wav");
+        Path poisoned300Path = Paths.get("audio", subfolder, "poisoned_300", audioName + "_300.wav");
 
         if (!Files.exists(originalPath) || !Files.isRegularFile(originalPath)) {
-            throw new IOException("Original audio not found: " + fileName);
+            throw new IOException("Original audio not found: " + originalPath);
         }
-        if (!Files.exists(poisonedPath) || !Files.isRegularFile(poisonedPath)) {
-            throw new IOException("Poisoned audio not found: " + fileName);
+        if (!Files.exists(poisoned100Path) || !Files.isRegularFile(poisoned100Path)) {
+            throw new IOException("Poisoned_100 audio not found: " + poisoned100Path);
+        }
+        if (!Files.exists(poisoned300Path) || !Files.isRegularFile(poisoned300Path)) {
+            throw new IOException("Poisoned_300 audio not found: " + poisoned300Path);
         }
 
         byte[] originalBytes = Files.readAllBytes(originalPath);
-        byte[] poisonedBytes = Files.readAllBytes(poisonedPath);
+        byte[] poisoned100Bytes = Files.readAllBytes(poisoned100Path);
+        byte[] poisoned300Bytes = Files.readAllBytes(poisoned300Path);
 
-        return new AudiosResponseModel(originalBytes, poisonedBytes);
+        return new AudiosResponseModel(originalBytes, poisoned100Bytes, poisoned300Bytes);
     }
 }

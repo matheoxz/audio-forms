@@ -23,8 +23,11 @@ public class FormResponse {
     @Field("original")
     private String original;
 
-    @Field("poisoned")
-    private String poisoned;
+    @Field("poisoned100")
+    private String poisoned100;
+
+    @Field("poisoned300")
+    private String poisoned300;
 
     @Field("responses")
     private Map<String, Object> responses;

@@ -13,6 +13,7 @@ public class SaveFormRequestModel {
     private String user; // UUID string identifying the user
     private String audioName;
     private String original;
-    private String poisoned;
+    private String poisoned100;
+    private String poisoned300;
     private Map<String, Object> responses;
 }

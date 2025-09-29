@@ -4,6 +4,7 @@ import br.com.lars.audio_forms.models.FormResponse;
 import br.com.lars.audio_forms.models.SaveFormRequestModel;
 import br.com.lars.audio_forms.models.UserResponses;
 import br.com.lars.audio_forms.repository.UserResponsesRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class SaveFormService {
 
     private final UserResponsesRepository userResponsesRepository;
@@ -34,12 +36,13 @@ public class SaveFormService {
 
         // generate id for the entry so each pushed response has its own id
         String entryId = new ObjectId().toString();
-
+        
         FormResponse entry = new FormResponse(
                 entryId,
                 request.getAudioName(),
                 request.getOriginal(),
-                request.getPoisoned(),
+                request.getPoisoned100(),
+                request.getPoisoned300(),
                 request.getResponses()
         );
 

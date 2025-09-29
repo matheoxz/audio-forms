@@ -1,5 +1,5 @@
 package br.com.lars.audio_forms.models;
 
 
-public record AudiosResponseModel(byte[] original, byte[] poisoned) {}
+public record AudiosResponseModel(byte[] original, byte[] poisoned100, byte[]poisoned300) {}
 
