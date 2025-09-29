@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import TextQuestion from './components/TextQuestion';
+import EvaluationQuestion from './components/EvaluationQuestion';
 
 // API base URL comes from the environment variable REACT_APP_API_BASE
 const API_BASE = process.env.REACT_APP_API_BASE || '';
 
 const Q1 = 'O que é dito em cada um dos áudios?';
+const Q2 = 'De 1 a 5, como você avalia a qualidade dos audios acima?';
 
 function App() {
   const [audiosList, setAudiosList] = useState([]); // ["audio1.wav", ...]
@@ -21,6 +23,9 @@ function App() {
 
   // textAnswer holds an object mapping for the three audios
   const [textAnswer, setTextAnswer] = useState({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
+
+  // evaluationAnswer holds numeric selections '1'..'5' for each audio
+  const [evaluationAnswer, setEvaluationAnswer] = useState({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -126,6 +131,7 @@ function App() {
     fetchAudio();
     // reset answers at each new screen (only Q1)
     setTextAnswer({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
+    setEvaluationAnswer({ 'Audio 1': '', 'Audio 2': '', 'Audio 3': '' });
     setSubmitError('');
   }, [currentAudioName]);
 
@@ -179,7 +185,15 @@ function App() {
     });
   }
 
-  const canSubmitAll = !!(audioData && mapping && isTextAnswerComplete(textAnswer));
+  function isEvaluationComplete(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    return ['Audio 1', 'Audio 2', 'Audio 3'].every((k) => {
+      const v = obj[k];
+      return typeof v === 'string' && ['1','2','3','4','5'].includes(v);
+    });
+  }
+
+  const canSubmitAll = !!(audioData && mapping && isTextAnswerComplete(textAnswer) && isEvaluationComplete(evaluationAnswer));
 
   async function handleSubmit() {
     if (!canSubmitAll || !mapping) return;
@@ -195,6 +209,7 @@ function App() {
         poisoned300: mapping.poisoned300Label,
         responses: {
           [Q1]: textAnswer,
+          [Q2]: evaluationAnswer,
         },
       };
 
@@ -286,6 +301,11 @@ function App() {
                 placeholder="Escreva o que é dito em cada áudio"
               />
 
+              <EvaluationQuestion
+                question={Q2}
+                value={evaluationAnswer}
+                onChange={(v) => setEvaluationAnswer(v)}
+              />
 
               {submitError && <p className="error">{submitError}</p>}
 

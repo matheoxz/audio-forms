@@ -35,7 +35,7 @@ export default function TextQuestion({ question, value = null, onChange = () => 
         const isIncompr = val[key] === INCOMPREENSIVEL;
         return (
           <div key={key} style={{ marginBottom: 12 }}>
-            <label style={{ fontWeight: 600 }}>{key}</label>
+            <label style={{  fontWeight: 500, fontSize: 12  }}>{key}</label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 6 }}>
               <textarea
                 rows={2}
